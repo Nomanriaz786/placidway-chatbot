@@ -201,7 +201,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .send-btn:hover:not(:disabled) { background: var(--brand-dark); }
 .send-btn:disabled { background: #f2b4b2; opacity: 1; }
 
-.footnote { margin: 8px var(--gutter) 12px; font-size: 12px; color: var(--muted); }
+.footnote { margin: 8px var(--gutter) 12px; font-size: 12px; color: var(--muted); text-align: center; }
 .error { color: var(--error); font-size: 14px; margin: 6px 0 0; }
 .error.banner { margin: 0 var(--gutter) 8px; }
 

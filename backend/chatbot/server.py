@@ -54,8 +54,8 @@ app = create_app(
     answer_fn=lambda history: answer_question(state["agent"], history),
     refresh_fn=refresh,
     data_dir=config.DATA_DIR,
-    admin_token=config.ADMIN_TOKEN,
     daily_limit=config.DAILY_LIMIT,
+    refresh_cooldown=config.REFRESH_COOLDOWN,
     status_fn=content_status,
     frontend_dist=config.FRONTEND_DIST,
 )

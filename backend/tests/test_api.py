@@ -17,7 +17,7 @@ def fake_answer(history):
 def make(tmp_path, **kw):
     refreshed = []
     app = create_app(answer_fn=fake_answer, refresh_fn=lambda: refreshed.append(1) or {"pages": 7, "chunks": 1},
-                     data_dir=tmp_path, admin_token="secret", rate_limit=kw.get("rate_limit", 30))
+                     data_dir=tmp_path, rate_limit=kw.get("rate_limit", 30))
     return TestClient(app), refreshed
 
 
@@ -58,7 +58,7 @@ def test_rate_limit(tmp_path):
 
 
 def test_daily_limit_applies_across_all_visitors(tmp_path):
-    app = create_app(answer_fn=fake_answer, refresh_fn=lambda: {}, data_dir=tmp_path, admin_token="secret", daily_limit=2)
+    app = create_app(answer_fn=fake_answer, refresh_fn=lambda: {}, data_dir=tmp_path, daily_limit=2)
     c = TestClient(app)
     codes = [c.post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]},
                     headers={"X-Forwarded-For": f"10.0.0.{i}"}).status_code for i in range(3)]
@@ -69,16 +69,22 @@ def test_daily_limit_applies_across_all_visitors(tmp_path):
 
 def test_status_reports_when_the_content_was_last_updated(tmp_path):
     status = {"updated_at": "2026-10-26T12:30:00+00:00", "pages": 7, "passages": 134}
-    app = create_app(answer_fn=fake_answer, refresh_fn=lambda: {}, data_dir=tmp_path, admin_token="secret",
+    app = create_app(answer_fn=fake_answer, refresh_fn=lambda: {}, data_dir=tmp_path,
                      status_fn=lambda: status)
     assert TestClient(app).get("/api/status").json() == status
 
 
-def test_refresh_needs_the_admin_token(tmp_path):
+def test_refresh_works_without_a_token(tmp_path):
     c, refreshed = make(tmp_path)
-    assert c.post("/api/refresh").status_code == 401
-    assert c.post("/api/refresh", headers={"X-Admin-Token": "wrong"}).status_code == 401
-    assert c.post("/api/refresh", headers={"X-Admin-Token": "secret"}).status_code == 200
+    assert c.post("/api/refresh").status_code == 200
+    assert refreshed == [1]
+
+
+def test_refresh_has_a_site_wide_cooldown(tmp_path):
+    c, refreshed = make(tmp_path)
+    assert c.post("/api/refresh").status_code == 200
+    r = c.post("/api/refresh")
+    assert r.status_code == 429 and "refreshed recently" in r.json()["detail"]
     assert refreshed == [1]
 
 
@@ -86,9 +92,9 @@ def test_failed_refresh_reports_an_error_and_keeps_serving(tmp_path):
     def blocked():
         raise RuntimeError("403 Forbidden")
 
-    app = create_app(answer_fn=fake_answer, refresh_fn=blocked, data_dir=tmp_path, admin_token="secret")
+    app = create_app(answer_fn=fake_answer, refresh_fn=blocked, data_dir=tmp_path)
     c = TestClient(app)
-    r = c.post("/api/refresh", headers={"X-Admin-Token": "secret"})
+    r = c.post("/api/refresh")
     assert r.status_code == 502 and "current content" in r.json()["detail"]
     assert ask(c, "How much is breast cancer treatment?").status_code == 200
 

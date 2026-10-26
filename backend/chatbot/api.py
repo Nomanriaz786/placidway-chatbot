@@ -1,14 +1,14 @@
 """HTTP layer: chat, lead capture, refresh, and the React page."""
 
-import hmac
+import math
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 
-from .limits import DailyQuota, RateLimiter
+from .limits import Cooldown, DailyQuota, RateLimiter
 from .schemas import ChatRequest, LeadRequest
 
 
@@ -19,11 +19,12 @@ def _append(path: Path, row: dict) -> None:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-def create_app(answer_fn, refresh_fn, data_dir: Path, admin_token: str, rate_limit: int = 20,
-               daily_limit: int = 100, status_fn=lambda: {}, frontend_dist: Path | None = None) -> FastAPI:
+def create_app(answer_fn, refresh_fn, data_dir: Path, rate_limit: int = 20, daily_limit: int = 100,
+               refresh_cooldown: int = 600, status_fn=lambda: {}, frontend_dist: Path | None = None) -> FastAPI:
     app = FastAPI(title="PlacidWay knowledge chatbot", docs_url=None, redoc_url=None)
     per_ip = RateLimiter(per_minute=rate_limit)
     daily = DailyQuota(limit=daily_limit, path=data_dir / "usage.json")
+    refresh_window = Cooldown(seconds=refresh_cooldown)
 
     @app.get("/api/health")
     def health():
@@ -53,9 +54,10 @@ def create_app(answer_fn, refresh_fn, data_dir: Path, admin_token: str, rate_lim
         return {"ok": True}
 
     @app.post("/api/refresh")
-    def refresh(x_admin_token: str = Header(default="")):
-        if not admin_token or not hmac.compare_digest(x_admin_token, admin_token):
-            raise HTTPException(401, "Invalid admin token.")
+    def refresh():
+        if not refresh_window.try_start():
+            minutes = max(1, math.ceil(refresh_window.seconds_left() / 60))
+            raise HTTPException(429, f"Content was refreshed recently. Please try again in {minutes} minute{'s' if minutes > 1 else ''}.")
         try:
             return refresh_fn()
         except Exception as exc:  # the old index stays live; a blocked crawl must not take the bot down

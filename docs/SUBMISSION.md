@@ -31,7 +31,7 @@ The core idea is that the model drafts the answer, and plain code decides whethe
 3. **Retrieval.** Vector and keyword results are merged. For cost questions, the price passages of the best-matching pages are added, because price tables rarely win on similarity alone.
 4. **Answering.** The agent searches, then returns a structured answer: text, source URLs, whether it answered, whether the topic is medical, and whether the visitor wants a quote.
 5. **Verification.** Code checks the sources and every price. A price taken from a retrieved page the model forgot to cite is accepted, and that page is added to the sources. A price found on no retrieved page replaces the answer with the safe fallback.
-6. **Refresh.** The **Refresh content** button asks for the admin token, re-crawls the pages, and swaps in the new index only when the crawl succeeds. If it fails, the bot keeps answering from the current content.
+6. **Refresh.** The **Refresh content** button re-crawls the pages and swaps in the new index only when the crawl succeeds. If it fails, the bot keeps answering from the current content. To protect PlacidWay's site, refresh is limited to one attempt every 10 minutes.
 
 ## 4. Requirements
 
@@ -43,7 +43,7 @@ The core idea is that the model drafts the answer, and plain code decides whethe
 | Honest "I don't know" | Unanswerable questions get a clear statement and the free quote link; invented prices are blocked by code. |
 | Cost questions | Prices are copied with currency and context, for example "3-week Out-Patient Program: $18,995 USD". |
 | Simple chat UI | Responsive React chat page for desktop and mobile. |
-| Refresh | A **Refresh content** button in the chat page (admin token required) re-crawls the pages; the page also shows when the content was last updated. See note below. |
+| Refresh | A **Refresh content** button in the chat page re-crawls the pages; the page also shows when the content was last updated. See note below. |
 | Live deployment | https://placidway-assistant.duckdns.org, on a Linux VPS with HTTPS. |
 
 **Nice to have:** answers in the visitor's language (tested with Spanish), follow-ups using chat history, a medical disclaimer shown once per conversation, lead capture (name and email), and logging of unanswered questions to find content gaps.
@@ -55,7 +55,7 @@ The core idea is that the model drafts the answer, and plain code decides whethe
 
 The crawler always identifies itself with its own User-Agent and follows robots.txt; it does not try to get around the block.
 
-**Protection for a public demo:** 20 questions per minute per visitor, 100 questions per day for the whole site, input length limits, and the API key kept only on the server.
+**Protection for a public demo:** 20 questions per minute per visitor, 100 questions per day for the whole site, one refresh every 10 minutes, input length limits, and the API key kept only on the server.
 
 ## 5. Test results
 
@@ -200,10 +200,10 @@ None (answered without page content)
 The README in the repository covers setup in full. In short:
 
 ```bash
-cp .env.example .env            # add OPENAI_API_KEY and an ADMIN_TOKEN
+cp .env.example .env            # add OPENAI_API_KEY
 pip install -r backend/requirements-dev.txt
 cd frontend && npm install && npm run build && cd ..
-cd backend && python -m pytest   # 35 tests, no network or API calls
+cd backend && python -m pytest   # 37 tests, no network or API calls
 uvicorn chatbot.server:app --port 8020
 ```
 

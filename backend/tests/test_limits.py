@@ -1,4 +1,4 @@
-from chatbot.limits import DailyQuota, RateLimiter
+from chatbot.limits import Cooldown, DailyQuota, RateLimiter
 
 
 def test_daily_quota_allows_up_to_the_limit_then_refuses(tmp_path):
@@ -25,3 +25,13 @@ def test_rate_limiter_is_per_ip():
     limiter = RateLimiter(per_minute=1)
     assert limiter.allow("1.1.1.1") and not limiter.allow("1.1.1.1")
     assert limiter.allow("2.2.2.2")
+
+
+def test_cooldown_allows_one_attempt_per_window():
+    now = {"t": 1000.0}
+    cooldown = Cooldown(seconds=600, clock=lambda: now["t"])
+    assert cooldown.try_start()
+    assert not cooldown.try_start()
+    assert cooldown.seconds_left() == 600
+    now["t"] += 601
+    assert cooldown.try_start()

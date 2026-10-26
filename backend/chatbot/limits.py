@@ -63,3 +63,26 @@ class DailyQuota:
     def _write(self, usage: dict) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(usage), encoding="utf-8")
+
+
+class Cooldown:
+    """One attempt per `seconds` window for the whole site, so a public button cannot hammer the source site."""
+
+    def __init__(self, seconds: int, clock=time.monotonic):
+        self.seconds = seconds
+        self.clock = clock
+        self._last: float | None = None
+        self._lock = threading.Lock()
+
+    def try_start(self) -> bool:
+        with self._lock:
+            now = self.clock()
+            if self._last is not None and now - self._last < self.seconds:
+                return False
+            self._last = now
+            return True
+
+    def seconds_left(self) -> int:
+        if self._last is None:
+            return 0
+        return max(0, round(self.seconds - (self.clock() - self._last)))

@@ -79,7 +79,7 @@ export default function App() {
             {busy && (
               <div className="row bot">
                 <div className="avatar" aria-hidden="true"><Bot size={18} /></div>
-                <div className="bubble bot typing"><span /><span /><span /> Searching PlacidWay pages</div>
+                <div className="bubble bot typing"><span /><span /><span /> Thinking…</div>
               </div>
             )}
             <div ref={endRef} />

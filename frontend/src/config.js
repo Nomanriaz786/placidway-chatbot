@@ -2,7 +2,7 @@ export const QUOTE_URL = 'https://www.placidway.com/request-info'
 export const HISTORY_LIMIT = 10
 
 export const DISCLAIMER =
-  'This assistant shares information from PlacidWay pages only. It is not medical advice; please speak to a qualified doctor about your situation.'
+  'For information only, not medical advice. Please consult a qualified doctor about your situation.'
 
 // The only pages the assistant answers from (mirrors backend/chatbot/sources.py).
 export const SOURCES = [

@@ -29,3 +29,4 @@ INFO:     127.0.0.1:51117 - "GET /assets/index-C-aPF1nf.css HTTP/1.1" 304 Not Mo
 INFO:     127.0.0.1:49671 - "GET /assets/index-DSKBevoK.js HTTP/1.1" 304 Not Modified
 INFO:     127.0.0.1:49671 - "GET /placidway-logo.png HTTP/1.1" 304 Not Modified
 INFO:     127.0.0.1:58497 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50930 - "POST /api/chat HTTP/1.1" 200 OK

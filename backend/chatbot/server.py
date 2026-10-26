@@ -36,5 +36,6 @@ app = create_app(
     refresh_fn=refresh,
     data_dir=config.DATA_DIR,
     admin_token=config.ADMIN_TOKEN,
+    daily_limit=config.DAILY_LIMIT,
     frontend_dist=config.FRONTEND_DIST,
 )

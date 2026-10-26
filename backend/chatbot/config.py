@@ -12,6 +12,7 @@ os.environ.setdefault("USER_AGENT", "PlacidWayAssessmentBot/1.0")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-5.4-mini")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+DAILY_LIMIT = int(os.getenv("DAILY_LIMIT", "100"))  # questions per UTC day, all visitors together
 DATA_DIR = ROOT / os.getenv("DATA_DIR", "data")
 INDEX_PATH = DATA_DIR / "index.json"
 FRONTEND_DIST = ROOT / "frontend" / "dist"

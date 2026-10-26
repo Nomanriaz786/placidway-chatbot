@@ -57,6 +57,16 @@ def test_rate_limit(tmp_path):
     assert codes == [200, 200, 429]
 
 
+def test_daily_limit_applies_across_all_visitors(tmp_path):
+    app = create_app(answer_fn=fake_answer, refresh_fn=lambda: {}, data_dir=tmp_path, admin_token="secret", daily_limit=2)
+    c = TestClient(app)
+    codes = [c.post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]},
+                    headers={"X-Forwarded-For": f"10.0.0.{i}"}).status_code for i in range(3)]
+    assert codes == [200, 200, 429]
+    r = c.post("/api/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+    assert "try again tomorrow" in r.json()["detail"]
+
+
 def test_refresh_needs_the_admin_token(tmp_path):
     c, refreshed = make(tmp_path)
     assert c.post("/api/refresh").status_code == 401

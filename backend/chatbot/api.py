@@ -2,15 +2,13 @@
 
 import hmac
 import json
-import threading
-import time
-from collections import defaultdict, deque
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 
+from .limits import DailyQuota, RateLimiter
 from .schemas import ChatRequest, LeadRequest
 
 
@@ -22,22 +20,10 @@ def _append(path: Path, row: dict) -> None:
 
 
 def create_app(answer_fn, refresh_fn, data_dir: Path, admin_token: str, rate_limit: int = 20,
-               frontend_dist: Path | None = None) -> FastAPI:
+               daily_limit: int = 100, frontend_dist: Path | None = None) -> FastAPI:
     app = FastAPI(title="PlacidWay knowledge chatbot", docs_url=None, redoc_url=None)
-    hits: dict[str, deque] = defaultdict(deque)
-    lock = threading.Lock()
-
-    def limited(ip: str) -> bool:
-        # shortcut: in-memory, per process; fine for one VPS process, use Redis if this ever scales out
-        now = time.monotonic()
-        with lock:
-            q = hits[ip]
-            while q and now - q[0] > 60:
-                q.popleft()
-            if len(q) >= rate_limit:
-                return True
-            q.append(now)
-            return False
+    per_ip = RateLimiter(per_minute=rate_limit)
+    daily = DailyQuota(limit=daily_limit, path=data_dir / "usage.json")
 
     @app.get("/api/health")
     def health():
@@ -45,8 +31,10 @@ def create_app(answer_fn, refresh_fn, data_dir: Path, admin_token: str, rate_lim
 
     @app.post("/api/chat")
     def chat(body: ChatRequest, request: Request):
-        if limited(request.client.host if request.client else "unknown"):
+        if not per_ip.allow(request.client.host if request.client else "unknown"):
             raise HTTPException(429, "Too many questions in a minute. Please wait a moment.")
+        if not daily.take():
+            raise HTTPException(429, "We've reached today's question limit. Please try again tomorrow.")
         history = [m.model_dump() for m in body.messages]
         result = answer_fn(history)
         if not result["grounded"]:

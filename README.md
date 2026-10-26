@@ -53,6 +53,7 @@ backend/
     schemas.py      BotAnswer and API request models
     agent.py        LangChain agent and the question-answer flow
     guardrails.py   citation and price checks
+    limits.py       per-IP rate limit and site-wide daily quota
     api.py          FastAPI routes: chat, lead, refresh, health
     server.py       production wiring (models, index, refresh)
   scripts/build_index.py          crawls the 7 pages and writes data/index.json
@@ -74,7 +75,7 @@ python -m venv .venv
 cd frontend && npm install && npm run build && cd ..
 
 cd backend
-../.venv/bin/python -m pytest                              # 29 tests, no API calls
+../.venv/bin/python -m pytest                              # 34 tests, no API calls
 ../.venv/bin/uvicorn chatbot.server:app --port 8020       # builds the index on first start
 ```
 
@@ -84,7 +85,7 @@ Open http://127.0.0.1:8020.
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/chat` | `{"messages": [{"role": "user", "content": "..."}]}`, up to 12 messages of 1,000 characters each; 20 requests per minute per IP |
+| POST | `/api/chat` | `{"messages": [{"role": "user", "content": "..."}]}`, up to 12 messages of 1,000 characters each; 20 requests per minute per IP; 100 questions per day for the whole site (`DAILY_LIMIT`) |
 | POST | `/api/lead` | `{"name", "email", "question"}`, stored in `data/leads.jsonl` |
 | POST | `/api/refresh` | header `X-Admin-Token`; re-crawls the 7 pages and swaps the index in when it is ready |
 | GET | `/api/health` | liveness check |
@@ -105,6 +106,7 @@ PlacidWay's site currently refuses requests from the hosting provider's IP range
 
 - The OpenAI key and admin token live only in the server's `.env` (git-ignored); nothing secret reaches the browser.
 - Strict request validation (roles, lengths, message count), per-IP rate limiting, and a constant-time admin-token comparison.
+- A site-wide daily quota (100 questions per UTC day by default, saved in `data/usage.json`) caps API cost while keeping the demo public, with no login.
 - The crawler fetches only the 7 listed URLs and respects robots.txt.
 
 ## Tools and models

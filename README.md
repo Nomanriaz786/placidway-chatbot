@@ -75,7 +75,7 @@ python -m venv .venv
 cd frontend && npm install && npm run build && cd ..
 
 cd backend
-../.venv/bin/python -m pytest                              # 34 tests, no API calls
+../.venv/bin/python -m pytest                              # 35 tests, no API calls
 ../.venv/bin/uvicorn chatbot.server:app --port 8020       # builds the index on first start
 ```
 
@@ -88,11 +88,14 @@ Open http://127.0.0.1:8020.
 | POST | `/api/chat` | `{"messages": [{"role": "user", "content": "..."}]}`, up to 12 messages of 1,000 characters each; 20 requests per minute per IP; 100 questions per day for the whole site (`DAILY_LIMIT`) |
 | POST | `/api/lead` | `{"name", "email", "question"}`, stored in `data/leads.jsonl` |
 | POST | `/api/refresh` | header `X-Admin-Token`; re-crawls the 7 pages and swaps the index in when it is ready |
+| GET | `/api/status` | when the content was last updated, page and passage counts (shown in the sidebar) |
 | GET | `/api/health` | liveness check |
 
 Questions the bot could not answer are logged to `data/unanswered.jsonl` to show content gaps.
 
 ## Refreshing content
+
+Use the **Refresh content** button at the bottom of the sidebar (it asks for the admin token), or call the API:
 
 ```bash
 curl -X POST https://<host>/api/refresh -H "X-Admin-Token: $ADMIN_TOKEN"

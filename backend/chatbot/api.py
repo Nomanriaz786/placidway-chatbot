@@ -20,7 +20,7 @@ def _append(path: Path, row: dict) -> None:
 
 
 def create_app(answer_fn, refresh_fn, data_dir: Path, admin_token: str, rate_limit: int = 20,
-               daily_limit: int = 100, frontend_dist: Path | None = None) -> FastAPI:
+               daily_limit: int = 100, status_fn=lambda: {}, frontend_dist: Path | None = None) -> FastAPI:
     app = FastAPI(title="PlacidWay knowledge chatbot", docs_url=None, redoc_url=None)
     per_ip = RateLimiter(per_minute=rate_limit)
     daily = DailyQuota(limit=daily_limit, path=data_dir / "usage.json")
@@ -28,6 +28,11 @@ def create_app(answer_fn, refresh_fn, data_dir: Path, admin_token: str, rate_lim
     @app.get("/api/health")
     def health():
         return {"ok": True}
+
+    @app.get("/api/status")
+    def status():
+        """Public: when the content was last updated and how much is indexed. Nothing sensitive."""
+        return status_fn()
 
     @app.post("/api/chat")
     def chat(body: ChatRequest, request: Request):
@@ -50,11 +55,11 @@ def create_app(answer_fn, refresh_fn, data_dir: Path, admin_token: str, rate_lim
     @app.post("/api/refresh")
     def refresh(x_admin_token: str = Header(default="")):
         if not admin_token or not hmac.compare_digest(x_admin_token, admin_token):
-            raise HTTPException(401, "invalid token")
+            raise HTTPException(401, "Invalid admin token.")
         try:
             return refresh_fn()
         except Exception as exc:  # the old index stays live; a blocked crawl must not take the bot down
-            raise HTTPException(502, f"Refresh failed ({exc.__class__.__name__}); still serving the current index.") from exc
+            raise HTTPException(502, "Could not fetch the PlacidWay pages from this server. Still answering from the current content.") from exc
 
     if frontend_dist and frontend_dist.exists():
         # Mounted last so /api/* routes take priority over the static files.

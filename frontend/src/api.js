@@ -1,8 +1,8 @@
-async function postJSON(path, body) {
+async function request(path, { method = 'GET', body, headers = {} } = {}) {
   const res = await fetch(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    method,
+    headers: body ? { 'Content-Type': 'application/json', ...headers } : headers,
+    body: body ? JSON.stringify(body) : undefined,
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -11,5 +11,8 @@ async function postJSON(path, body) {
   return data
 }
 
-export const askQuestion = (messages) => postJSON('/api/chat', { messages })
-export const submitLead = (lead) => postJSON('/api/lead', lead)
+export const askQuestion = (messages) => request('/api/chat', { method: 'POST', body: { messages } })
+export const submitLead = (lead) => request('/api/lead', { method: 'POST', body: lead })
+export const getContentStatus = () => request('/api/status')
+export const refreshContent = (adminToken) =>
+  request('/api/refresh', { method: 'POST', headers: { 'X-Admin-Token': adminToken } })

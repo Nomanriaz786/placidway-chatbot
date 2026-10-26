@@ -67,6 +67,13 @@ def test_daily_limit_applies_across_all_visitors(tmp_path):
     assert "try again tomorrow" in r.json()["detail"]
 
 
+def test_status_reports_when_the_content_was_last_updated(tmp_path):
+    status = {"updated_at": "2026-10-26T12:30:00+00:00", "pages": 7, "passages": 134}
+    app = create_app(answer_fn=fake_answer, refresh_fn=lambda: {}, data_dir=tmp_path, admin_token="secret",
+                     status_fn=lambda: status)
+    assert TestClient(app).get("/api/status").json() == status
+
+
 def test_refresh_needs_the_admin_token(tmp_path):
     c, refreshed = make(tmp_path)
     assert c.post("/api/refresh").status_code == 401
@@ -82,7 +89,7 @@ def test_failed_refresh_reports_an_error_and_keeps_serving(tmp_path):
     app = create_app(answer_fn=fake_answer, refresh_fn=blocked, data_dir=tmp_path, admin_token="secret")
     c = TestClient(app)
     r = c.post("/api/refresh", headers={"X-Admin-Token": "secret"})
-    assert r.status_code == 502 and "current index" in r.json()["detail"]
+    assert r.status_code == 502 and "current content" in r.json()["detail"]
     assert ask(c, "How much is breast cancer treatment?").status_code == 200
 
 

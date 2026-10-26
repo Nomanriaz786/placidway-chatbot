@@ -1,5 +1,6 @@
 import { ExternalLink, MessageCircleQuestion, ShieldCheck } from 'lucide-react'
 import { SOURCES, SUGGESTIONS } from '../config.js'
+import ContentStatus from './ContentStatus.jsx'
 
 const RULES = [
   'Uses only the PlacidWay pages listed below.',
@@ -39,6 +40,8 @@ export default function Sidebar({ open, onAsk, busy }) {
           ))}
         </ul>
       </section>
+
+      <ContentStatus />
     </aside>
   )
 }

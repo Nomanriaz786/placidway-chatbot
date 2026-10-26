@@ -1,5 +1,8 @@
 """Production wiring: real models, the saved index, and refresh. Run with: uvicorn chatbot.server:app"""
 
+import json
+from datetime import datetime, timezone
+
 from langchain_core.documents import Document
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
@@ -25,6 +28,22 @@ def _load_agent():
 state = {"agent": _load_agent()}
 
 
+_status_cache: dict = {}
+
+
+def content_status() -> dict:
+    """Last update time and size of the saved index; re-read only when index.json changes."""
+    mtime = config.INDEX_PATH.stat().st_mtime
+    if _status_cache.get("mtime") != mtime:
+        records = json.loads(config.INDEX_PATH.read_text(encoding="utf-8")).values()
+        _status_cache.update(mtime=mtime, status={
+            "updated_at": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat(timespec="seconds"),
+            "pages": len({r["metadata"]["source"] for r in records}),
+            "passages": len(records),
+        })
+    return _status_cache["status"]
+
+
 def refresh() -> dict:
     stats = build_index(embeddings, config.INDEX_PATH)
     state["agent"] = _load_agent()  # swap in the new index only after it is fully built
@@ -37,5 +56,6 @@ app = create_app(
     data_dir=config.DATA_DIR,
     admin_token=config.ADMIN_TOKEN,
     daily_limit=config.DAILY_LIMIT,
+    status_fn=content_status,
     frontend_dist=config.FRONTEND_DIST,
 )

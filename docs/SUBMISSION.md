@@ -31,7 +31,7 @@ The core idea is that the model drafts the answer, and plain code decides whethe
 3. **Retrieval.** Vector and keyword results are merged. For cost questions, the price passages of the best-matching pages are added, because price tables rarely win on similarity alone.
 4. **Answering.** The agent searches, then returns a structured answer: text, source URLs, whether it answered, whether the topic is medical, and whether the visitor wants a quote.
 5. **Verification.** Code checks the sources and every price. A price taken from a retrieved page the model forgot to cite is accepted, and that page is added to the sources. A price found on no retrieved page replaces the answer with the safe fallback.
-6. **Refresh.** A token-protected endpoint re-crawls the pages and swaps in the new index only when the crawl succeeds. A script builds the same index from the command line.
+6. **Refresh.** The **Refresh content** button asks for the admin token, re-crawls the pages, and swaps in the new index only when the crawl succeeds. If it fails, the bot keeps answering from the current content.
 
 ## 4. Requirements
 
@@ -43,10 +43,17 @@ The core idea is that the model drafts the answer, and plain code decides whethe
 | Honest "I don't know" | Unanswerable questions get a clear statement and the free quote link; invented prices are blocked by code. |
 | Cost questions | Prices are copied with currency and context, for example "3-week Out-Patient Program: $18,995 USD". |
 | Simple chat UI | Responsive React chat page for desktop and mobile. |
-| Refresh | `POST /api/refresh` (admin token) or `python -m scripts.build_index`. |
-| Live deployment | https://placidway-assistant.duckdns.org, running as a systemd service behind Apache with HTTPS. |
+| Refresh | A **Refresh content** button in the chat page (admin token required) re-crawls the pages; the page also shows when the content was last updated. See note below. |
+| Live deployment | https://placidway-assistant.duckdns.org, on a Linux VPS with HTTPS. |
 
 **Nice to have:** answers in the visitor's language (tested with Spanish), follow-ups using chat history, a medical disclaimer shown once per conversation, lead capture (name and email), and logging of unanswered questions to find content gaps.
+
+**Refresh on the live server:** PlacidWay's site currently returns HTTP 403 to the server's IP address (72.61.167.93), so the Refresh button on the live site reports that the pages could not be fetched and keeps the current content. Two ways to update the content:
+
+- **Allowlist the server IP 72.61.167.93.** The Refresh button then works on the live site with no other change.
+- **Run the refresh locally,** where the pages are reachable: `python -m scripts.build_index` builds the same index, which is then copied to the server.
+
+The crawler always identifies itself with its own User-Agent and follows robots.txt; it does not try to get around the block.
 
 **Protection for a public demo:** 20 questions per minute per visitor, 100 questions per day for the whole site, input length limits, and the API key kept only on the server.
 
@@ -196,7 +203,7 @@ The README in the repository covers setup in full. In short:
 cp .env.example .env            # add OPENAI_API_KEY and an ADMIN_TOKEN
 pip install -r backend/requirements-dev.txt
 cd frontend && npm install && npm run build && cd ..
-cd backend && python -m pytest   # 34 tests, no network or API calls
+cd backend && python -m pytest   # 35 tests, no network or API calls
 uvicorn chatbot.server:app --port 8020
 ```
 
@@ -207,7 +214,7 @@ uvicorn chatbot.server:app --port 8020
 - **Content scope.** The bot knows only the seven pages, so many comparisons correctly end in "I don't know".
 - **Numeric price check.** The guardrail proves every price exists on a retrieved page, but not that it belongs to the treatment named in the answer.
 - **Strict fallback.** If the model repeats a price the visitor claimed, the whole reply is replaced by the safe fallback rather than a polite correction.
-- **Refresh from the server.** PlacidWay's site returns HTTP 403 to the hosting provider's IP range, so the live index is built from an allowed network and uploaded. The refresh endpoint fails safely and keeps the current index until the server's IP is allowlisted.
+- **Refresh from the server.** Until the server IP is allowlisted, the live Refresh button cannot fetch the pages; the content is refreshed by running the crawler locally.
 - **Videos.** Only the text around each video is indexed; the videos are not transcribed.
 
 **With another week**
@@ -215,5 +222,5 @@ uvicorn chatbot.server:app --port 8020
 1. Parse the price tables into rows (treatment, program, duration, price) and check that each quoted price belongs to the treatment in the answer.
 2. Build an evaluation set of 50 or more questions with expected sources and prices, and run it in CI.
 3. Keep cited facts when the model is unsure, and correct a visitor's wrong price instead of falling back.
-4. Schedule refreshes with change detection once the server's IP is allowlisted.
+4. Schedule automatic refreshes with change detection once the server IP is allowlisted.
 5. Stream replies and add an admin view of unanswered questions and leads.

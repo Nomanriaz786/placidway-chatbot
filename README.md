@@ -2,7 +2,7 @@
 
 A chatbot that answers patient questions using only the content of seven PlacidWay pages, cites the page each answer came from, and says "I don't know" instead of guessing.
 
-**Live demo:** {{LIVE_URL}}
+**Live:** https://placidway-assistant.duckdns.org
 
 ## How it works
 
